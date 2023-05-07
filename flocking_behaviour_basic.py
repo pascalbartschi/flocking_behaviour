@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -225,10 +226,19 @@ def simulate_flocking(initialize_func = initialize_random,
             
         return positions
     
-def animate_simulations(simulation_list, ax_lims = 50, filename="animation"):
+def animate_simulations(simulation_list, titles, filename, ax_lims = 50, directory = "animations"):
+    
     if not all(len(x) == len(simulation_list[0]) for x in simulation_list):
         raise RuntimeError("All simulation must have been simulated with same number of steps")
         
+    
+    # check if directory exists
+    if not os.path.exists(directory):
+        # create directory if it does not exist
+        os.makedirs(directory)
+        
+    
+    # extraxt dimension    
     d = simulation_list[0].shape[2]
     
     if d == 2:
@@ -238,27 +248,33 @@ def animate_simulations(simulation_list, ax_lims = 50, filename="animation"):
         ncol = len(simulation_list)
         fig, axs = plt.subplots(nrows=1, ncols=ncol, figsize = (ncol * 6,6))
     
+        # distinguish between single and multi plotting
         if ncol == 1:
+            # create PathCollection
             line = axs.scatter([], [])
+            axs.set_title = titles[0]
             axs.set_xlim([-ax_lims, ax_lims])
             axs.set_ylim([-ax_lims, ax_lims])
     
             def update(frame):
+                # reformat data
                 xy = np.column_stack(tup=(simulation_list[0][frame, :, 0], simulation_list[0][frame, :, 1]))
                 line.set_offsets(xy)
                 return (line,)
     
         else:
             # for row in axs
-            for ax in axs:
+            for i, ax in enumerate(axs):
                 line = ax.scatter([], [])
+                ax.set_title(titles[i])
                 ax.set_xlim([-ax_lims, ax_lims])
                 ax.set_ylim([-ax_lims, ax_lims])
                 lines.append(line)
     
-            # Define the animation function
+            # define the animation function
             def update(frame):
                 for i, line in enumerate(lines):
+                    # reformat data
                     xy = np.column_stack(tup=(simulation_list[i][frame, :, 0], simulation_list[i][frame, :, 1]))
                     line.set_offsets(xy)
                 return tuple(lines)
@@ -271,11 +287,11 @@ def animate_simulations(simulation_list, ax_lims = 50, filename="animation"):
             blit=True,
         )
     
-        anim.save(filename + ".mp4")
+        anim.save(directory + "/" + filename + ".mp4")
         
     elif d == 3:
 
-        # Create a list of plot objects
+        # create a list of plot objects
         lines = []
         ncol = len(simulation_list)
         fig = plt.figure(figsize=(ncol*6, 6))
@@ -283,6 +299,7 @@ def animate_simulations(simulation_list, ax_lims = 50, filename="animation"):
     
         if ncol == 1:
             line = axs.scatter([], [], [])
+            axs.set_title(titles[0])
             axs.set_xlim3d([-ax_lims, ax_lims])
             axs.set_ylim3d([-ax_lims, ax_lims])
             axs.set_zlim3d([-ax_lims, ax_lims])
@@ -294,14 +311,15 @@ def animate_simulations(simulation_list, ax_lims = 50, filename="animation"):
     
         else:
             # for row in axs
-            for ax in axs:
+            for i, ax in enumerate(axs):
                 line = ax.scatter([], [], [])
+                ax.set_title(titles[i])
                 ax.set_xlim3d([-ax_lims, ax_lims])
                 ax.set_ylim3d([-ax_lims, ax_lims])
                 ax.set_zlim3d([-ax_lims, ax_lims])
                 lines.append(line)
     
-            # Define the animation function
+            # define the animation function
             def update(frame):
                 for i, line in enumerate(lines):
                     xyz = simulation_list[i][frame]
@@ -316,7 +334,7 @@ def animate_simulations(simulation_list, ax_lims = 50, filename="animation"):
             blit=True,
         )
     
-        anim.save(filename + ".mp4")
+        anim.save(directory + "/" + filename + ".mp4")
 
 
         
@@ -331,6 +349,7 @@ if __name__ == "__main__":
     #simulate_flocking(d = 3)
     # store a simulation
     pos = simulate_flocking(d = 3, inline_plotting = False)
+    animate_simulations([pos, pos], ["p1", "p2"], "example")
 
 
 
