@@ -1,6 +1,9 @@
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 # from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.animation import FuncAnimation
+matplotlib.use('Agg')
 
 
 def initialize_random(param):
@@ -221,7 +224,101 @@ def simulate_flocking(initialize_func = initialize_random,
             positions[i+1, :, :] = agent_now.copy()
             
         return positions
-            
+    
+def animate_simulations(simulation_list, ax_lims = 50, filename="animation"):
+    if not all(len(x) == len(simulation_list[0]) for x in simulation_list):
+        raise RuntimeError("All simulation must have been simulated with same number of steps")
+        
+    d = simulation_list[0].shape[2]
+    
+    if d == 2:
+
+        # Create a list of plot objects
+        lines = []
+        ncol = len(simulation_list)
+        fig, axs = plt.subplots(nrows=1, ncols=ncol, figsize = (ncol * 6,6))
+    
+        if ncol == 1:
+            line = axs.scatter([], [])
+            axs.set_xlim([-ax_lims, ax_lims])
+            axs.set_ylim([-ax_lims, ax_lims])
+    
+            def update(frame):
+                xy = np.column_stack(tup=(simulation_list[0][frame, :, 0], simulation_list[0][frame, :, 1]))
+                line.set_offsets(xy)
+                return (line,)
+    
+        else:
+            # for row in axs
+            for ax in axs:
+                line = ax.scatter([], [])
+                ax.set_xlim([-ax_lims, ax_lims])
+                ax.set_ylim([-ax_lims, ax_lims])
+                lines.append(line)
+    
+            # Define the animation function
+            def update(frame):
+                for i, line in enumerate(lines):
+                    xy = np.column_stack(tup=(simulation_list[i][frame, :, 0], simulation_list[i][frame, :, 1]))
+                    line.set_offsets(xy)
+                return tuple(lines)
+    
+        anim = FuncAnimation(
+            fig=fig,
+            func=update,
+            frames=len(simulation_list[0]),
+            interval=50,
+            blit=True,
+        )
+    
+        anim.save(filename + ".mp4")
+        
+    elif d == 3:
+
+        # Create a list of plot objects
+        lines = []
+        ncol = len(simulation_list)
+        fig = plt.figure(figsize=(ncol*6, 6))
+        axs = [fig.add_subplot(1, ncol, i+1, projection='3d') for i in range(ncol)]
+    
+        if ncol == 1:
+            line = axs.scatter([], [], [])
+            axs.set_xlim3d([-ax_lims, ax_lims])
+            axs.set_ylim3d([-ax_lims, ax_lims])
+            axs.set_zlim3d([-ax_lims, ax_lims])
+    
+            def update(frame):
+                xyz = simulation_list[0][frame]
+                line._offsets3d = (xyz[:,0], xyz[:,1], xyz[:,2])
+                return (line,)
+    
+        else:
+            # for row in axs
+            for ax in axs:
+                line = ax.scatter([], [], [])
+                ax.set_xlim3d([-ax_lims, ax_lims])
+                ax.set_ylim3d([-ax_lims, ax_lims])
+                ax.set_zlim3d([-ax_lims, ax_lims])
+                lines.append(line)
+    
+            # Define the animation function
+            def update(frame):
+                for i, line in enumerate(lines):
+                    xyz = simulation_list[i][frame]
+                    line._offsets3d = (xyz[:,0], xyz[:,1], xyz[:,2])
+                return tuple(lines)
+    
+        anim = FuncAnimation(
+            fig=fig,
+            func=update,
+            frames=len(simulation_list[0]),
+            interval=50,
+            blit=True,
+        )
+    
+        anim.save(filename + ".mp4")
+
+
         
 
         
@@ -229,11 +326,11 @@ def simulate_flocking(initialize_func = initialize_random,
         
 if __name__ == "__main__":
     # simulate in 2D
-    simulate_flocking(d = 2)
+    #simulate_flocking(d = 2)
     # simulate in 3D
-    simulate_flocking(d = 3)
+    #simulate_flocking(d = 3)
     # store a simulation
-    pos = simulate_flocking(d = 2, inline_plotting = False)
+    pos = simulate_flocking(d = 3, inline_plotting = False)
 
 
 
