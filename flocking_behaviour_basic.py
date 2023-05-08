@@ -4,7 +4,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 # from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.animation import FuncAnimation
-matplotlib.use('Agg')
 
 
 def initialize_random(param):
@@ -80,7 +79,7 @@ def inline_plot_2D(agent_now, ax, param):
     lower_lim, upper_lim = param["ax_lim"]
     # plot 2D
     ax.clear()
-    ax.scatter(agent_now[:, 0], agent_now[:, 1])
+    ax.scatter(agent_now[:, 0], agent_now[:, 1], s = param["pointsize"])
     ax.set_xlim(lower_lim, upper_lim)
     ax.set_ylim(lower_lim, upper_lim)
     plt.pause(0.01)
@@ -104,7 +103,7 @@ def inline_plot_3D(agent_now, ax, param):
     '''
     lower_lim, upper_lim = param["ax_lim"]
     ax.clear()
-    ax.scatter(agent_now[:, 0], agent_now[:, 1], agent_now[:, 2])
+    ax.scatter(agent_now[:, 0], agent_now[:, 1], agent_now[:, 2], s = param["pointsize"])
     ax.set_xlim(lower_lim, upper_lim)
     ax.set_ylim(lower_lim, upper_lim)
     ax.set_zlim(lower_lim, upper_lim)
@@ -136,6 +135,7 @@ def update(agent_now, agent_old, param):
     '''
     d = param["d"]
     center_pull = param["center_pull"]
+    lower_lim, upper_lim = param["ax_lim"]
     
     agent_temp = np.zeros_like(agent_now)
     # calculate center of mass
@@ -145,8 +145,14 @@ def update(agent_now, agent_old, param):
     for j in range(d):
         agent_temp[:, j] = 2 * agent_now[:, j] - agent_old[:, j] + \
             center_pull * (C[j] - agent_now[:, j]) / euclidian_dist((C - agent_now))
-    
-    return agent_temp
+            
+    # periodic boundary conditions by calculating delta in bracket and adding it to opposite mean
+    agent_plot = np.where(agent_temp < lower_lim, 
+                          upper_lim + (agent_temp + upper_lim), 
+                          np.where(agent_temp > upper_lim, lower_lim + (agent_temp + lower_lim), agent_temp)
+                          )
+    # returning an array for plotting a one with accurate positions, such that periodic boundaries do not intetfere with CoM calculations
+    return agent_temp, agent_plot
     
 
 def simulate_flocking(initialize_func = initialize_random,
@@ -155,9 +161,10 @@ def simulate_flocking(initialize_func = initialize_random,
                       d = 2,
                       param = {"n" : 100,
                                "init_coord":(-1, 1),
-                               "ax_lim": (-50, 50),
-                               "steps": 100,
-                               "center_pull": 1.5}): 
+                               "ax_lim": (-500, 500),
+                               "steps": 500,
+                               "center_pull": 1.5, 
+                               "pointsize": 2}): 
     '''
 
     Parameters
@@ -176,6 +183,9 @@ def simulate_flocking(initialize_func = initialize_random,
     None.
 
     '''
+    # use an interactive backend
+    matplotlib.use('Qt5Agg') # or 'Qt5Agg' or 'WXAgg'
+    
     steps = param["steps"]
     n = param["n"]
     param["d"] = d
@@ -195,13 +205,13 @@ def simulate_flocking(initialize_func = initialize_random,
         for i in range(steps):
         
         
-            agent_temp = update_func(agent_now, agent_old, param)
+            agent_temp, agent_plot = update_func(agent_now, agent_old, param)
             # store updated and this position for next acceleration
             agent_old = agent_now.copy()
             agent_now = agent_temp.copy()
             
             # plot
-            inline_plotting_func(agent_now, ax, param)
+            inline_plotting_func(agent_plot, ax, param)
         
         # close the plotting window
         plt.close()
@@ -216,17 +226,19 @@ def simulate_flocking(initialize_func = initialize_random,
         for i in range(steps):
         
         
-            agent_temp = update_func(agent_now, agent_old, param)
+            agent_temp, agent_plot = update_func(agent_now, agent_old, param)
             # store updated and this position for next acceleration
             agent_old = agent_now.copy()
             agent_now = agent_temp.copy()
             
             # insert in storage
-            positions[i+1, :, :] = agent_now.copy()
+            positions[i+1, :, :] = agent_plot.copy()
             
         return positions
     
-def animate_simulations(simulation_list, titles, filename, ax_lims = 50, directory = "animations"):
+def animate_simulations(simulation_list, titles, filename, ax_lims = 50, pointsize = 2, directory = "animations"):
+    # use non-GUI backend
+    matplotlib.use('Agg')
     
     if not all(len(x) == len(simulation_list[0]) for x in simulation_list):
         raise RuntimeError("All simulation must have been simulated with same number of steps")
@@ -251,7 +263,7 @@ def animate_simulations(simulation_list, titles, filename, ax_lims = 50, directo
         # distinguish between single and multi plotting
         if ncol == 1:
             # create PathCollection
-            line = axs.scatter([], [])
+            line = axs.scatter([], [], s = pointsize)
             axs.set_title = titles[0]
             axs.set_xlim([-ax_lims, ax_lims])
             axs.set_ylim([-ax_lims, ax_lims])
@@ -265,7 +277,7 @@ def animate_simulations(simulation_list, titles, filename, ax_lims = 50, directo
         else:
             # for row in axs
             for i, ax in enumerate(axs):
-                line = ax.scatter([], [])
+                line = ax.scatter([], [], s = pointsize)
                 ax.set_title(titles[i])
                 ax.set_xlim([-ax_lims, ax_lims])
                 ax.set_ylim([-ax_lims, ax_lims])
@@ -298,7 +310,7 @@ def animate_simulations(simulation_list, titles, filename, ax_lims = 50, directo
         axs = [fig.add_subplot(1, ncol, i+1, projection='3d') for i in range(ncol)]
     
         if ncol == 1:
-            line = axs.scatter([], [], [])
+            line = axs.scatter([], [], [], s = pointsize)
             axs.set_title(titles[0])
             axs.set_xlim3d([-ax_lims, ax_lims])
             axs.set_ylim3d([-ax_lims, ax_lims])
@@ -312,7 +324,7 @@ def animate_simulations(simulation_list, titles, filename, ax_lims = 50, directo
         else:
             # for row in axs
             for i, ax in enumerate(axs):
-                line = ax.scatter([], [], [])
+                line = ax.scatter([], [], [], s = pointsize)
                 ax.set_title(titles[i])
                 ax.set_xlim3d([-ax_lims, ax_lims])
                 ax.set_ylim3d([-ax_lims, ax_lims])
@@ -344,12 +356,12 @@ def animate_simulations(simulation_list, titles, filename, ax_lims = 50, directo
         
 if __name__ == "__main__":
     # simulate in 2D
-    #simulate_flocking(d = 2)
+    simulate_flocking(d = 2)
     # simulate in 3D
     #simulate_flocking(d = 3)
     # store a simulation
-    pos = simulate_flocking(d = 3, inline_plotting = False)
-    animate_simulations([pos, pos], ["p1", "p2"], "example")
+    # pos = simulate_flocking(d = 3, inline_plotting = False)
+    # animate_simulations([pos, pos], ["p1", "p2"], "example")
 
 
 
