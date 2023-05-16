@@ -60,9 +60,66 @@ def initialize_random(param):
     else:
         raise ValueError("Incorrect number of dimensions. Choose d=2 or d=3.")
 
-    return agent_old, agent_now, fig, ax
+    return agent_old, agent_now, fig, ax, param
 
-def inline_plot_2D(agent_now, ax, param):
+def initialize_predator(param):
+    '''
+    This function initializes the agents, as well as the plotting window
+
+    Parameters
+    ----------
+    param : dict
+        Holds the necessary parameters.
+
+    Raises
+    ------
+    ValueError
+        Dimension is not supplied or invalid.
+
+    Returns
+    -------
+    agent_old : np.ndarray
+        Zeros.
+    agent_now : np.ndarray
+        Initial positions of agents.
+    fig : figure object
+        Figure to plot in.
+    ax : artist object
+        Artist axis to plot in.
+
+    '''
+    n = param["n"]
+    d = param["d"]
+    low, high = param["init_coord"]
+    lower_lim, upper_lim = param["ax_lim"]
+    
+
+    # initialize n agents in d dimensions
+    
+    
+    agent_now = np.random.uniform(low=low, high=high, size=(n, d))
+    agent_old = np.zeros_like(agent_now)
+    param["predator_xy"] = np.random.choice([lower_lim + 1, upper_lim - 1], size = 2, replace = True)
+    agent_temp = np.zeros_like(agent_now)
+    
+    if d == 2: 
+        # some fig to plot
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+        ax.set_xlim(lower_lim, upper_lim)
+        ax.set_ylim(lower_lim, upper_lim)
+    elif d == 3: 
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1, projection = "3d")
+        ax.set_xlim(lower_lim, upper_lim)
+        ax.set_ylim(lower_lim, upper_lim)
+        ax.set_zlim(lower_lim, upper_lim)
+    else:
+        raise ValueError("Incorrect number of dimensions. Choose d=2 or d=3.")
+
+    return agent_old, agent_now, fig, ax, param
+
+def inline_plot_2D_basic(agent_now, ax, param):
     '''
     Plots in 2D after clearing axis object
 
@@ -86,8 +143,33 @@ def inline_plot_2D(agent_now, ax, param):
     
     return ax
     
+def inline_plot_2D_predator(agent_now, ax, param):
+    '''
+    Plots in 2D after clearing axis object
 
-def inline_plot_3D(agent_now, ax, param):
+    Parameters
+    ----------
+    agent_now : array (n, d)
+    ax : axis object
+
+    Returns
+    -------
+    ax : axis object
+
+    '''
+    lower_lim, upper_lim = param["ax_lim"]
+    # plot 2D
+    ax.clear()
+    ax.scatter(agent_now[:, 0], agent_now[:, 1], s = param["pointsize"])
+    ax.scatter(param["predator_xy"][0], param["predator_xy"][1], s = param["pointsize"] * 4, c = "red")
+    ax.set_xlim(lower_lim, upper_lim)
+    ax.set_ylim(lower_lim, upper_lim)
+    plt.legend()
+    plt.pause(0.1)
+    
+    return ax
+
+def inline_plot_3D_basic(agent_now, ax, param):
     '''
     Plots in 3D after clearing axis object
 
@@ -111,9 +193,9 @@ def inline_plot_3D(agent_now, ax, param):
     
     return ax
 
-def euclidian_dist(array):
+def euclidian_dist(array, axis):
 
-    return np.sqrt(np.sum(array**2, axis = 1))
+    return np.sqrt(np.sum(array**2, axis = axis))
 
 def update(agent_now, agent_old, param):
     '''
@@ -144,7 +226,7 @@ def update(agent_now, agent_old, param):
     # update the agent position according to acceleration to center
     for j in range(d):
         agent_temp[:, j] = 2 * agent_now[:, j] - agent_old[:, j] + \
-            center_pull * (C[j] - agent_now[:, j]) / euclidian_dist((C - agent_now))
+            center_pull * (C[j] - agent_now[:, j]) / euclidian_dist((C - agent_now), axis = 1)
             
     # periodic boundary conditions by calculating delta in bracket and adding it to opposite mean
     agent_plot = np.where(agent_temp < lower_lim, 
@@ -152,19 +234,64 @@ def update(agent_now, agent_old, param):
                           np.where(agent_temp > upper_lim, lower_lim + (agent_temp + lower_lim), agent_temp)
                           )
     # returning an array for plotting a one with accurate positions, such that periodic boundaries do not intetfere with CoM calculations
-    return agent_temp, agent_plot
+    return agent_temp, agent_plot, param
+
+def update_predator(agent_now, agent_old, param):
+    '''
+    Update of the postion of the agents, with the assumption that their acceleretion is computed from
+    their pull towards the center of mass and the delta between their new and old position
+    Parameters
+    ----------
+    agent_now : array (n, d)
+        DESCRIPTION.
+    agent_old : array (n, d)
+        DESCRIPTION.
+    center_pull : int, optional
+        DESCRIPTION. The default is 1.5.
+
+    Returns
+    -------
+    agent_temp : updated positon of agents
+
+    '''
+    d = param["d"]
+    center_pull = param["center_pull"]
+    lower_lim, upper_lim = param["ax_lim"]
+    predator_push = param["predator_push"]
+    predator_pull = param["predator_pull"]
+    
+    agent_temp = np.zeros_like(agent_now)
+    # calculate center of mass
+    C = np.mean(agent_now, axis=0)
+
+    # update the agent position according to acceleration to center
+    for j in range(d):
+        agent_temp[:, j] = 2 * agent_now[:, j] - agent_old[:, j] + \
+            center_pull * (C[j] - agent_now[:, j]) / euclidian_dist((C - agent_now), axis = 1) \
+            + predator_push * (param["predator_xy"][j] - agent_now[:, j]) / euclidian_dist((param["predator_xy"] - agent_now), axis = 1)
+            
+        param["predator_xy"][j] =  predator_pull * (param["predator_xy"][j] - C[j]) / euclidian_dist((param["predator_xy"] - C), axis = 0)
+            
+    # periodic boundary conditions by calculating delta in bracket and adding it to opposite mean
+    agent_plot = np.where(agent_temp < lower_lim, 
+                          upper_lim + (agent_temp + upper_lim), 
+                          np.where(agent_temp > upper_lim, lower_lim + (agent_temp + lower_lim), agent_temp)
+                          )
+    # returning an array for plotting a one with accurate positions, such that periodic boundaries do not intetfere with CoM calculations
+    return agent_temp, agent_plot, param
     
 
-def simulate_flocking(initialize_func = initialize_random,
-                      update_func = update,
+def simulate_flocking(mode = "basic",
                       inline_plotting = True,
                       d = 2,
                       param = {"n" : 100,
                                "init_coord":(-1, 1),
-                               "ax_lim": (-500, 500),
+                               "ax_lim": (-50, 50),
                                "steps": 500,
                                "center_pull": 1.5, 
-                               "pointsize": 2}): 
+                               "pointsize": 2, 
+                               "predator_push": 1.5,
+                               "predator_pull": 1.5}): 
     '''
 
     Parameters
@@ -190,8 +317,22 @@ def simulate_flocking(initialize_func = initialize_random,
     n = param["n"]
     param["d"] = d
     
-    agent_old, agent_now, fig, ax = initialize_func(param)
     
+    
+    
+    if mode == "basic": 
+        inline_plot_2D = inline_plot_2D_basic
+        inline_plot_3D = inline_plot_3D_basic
+        initialize_func = initialize_random
+        update_func = update
+    elif mode == "predator": 
+        inline_plot_2D = inline_plot_2D_predator
+        # inline_plot_3D = inline_plot_3D_basic
+        initialize_func = initialize_predator
+        update_func = update_predator
+        
+    agent_old, agent_now, fig, ax, param = initialize_func(param)
+        
     # inline plotting to explore
     if inline_plotting:
         if d == 2: 
@@ -204,8 +345,8 @@ def simulate_flocking(initialize_func = initialize_random,
         # simulate
         for i in range(steps):
         
-        
-            agent_temp, agent_plot = update_func(agent_now, agent_old, param)
+            # print(param)
+            agent_temp, agent_plot, param = update_func(agent_now, agent_old, param)
             # store updated and this position for next acceleration
             agent_old = agent_now.copy()
             agent_now = agent_temp.copy()
@@ -355,8 +496,10 @@ def animate_simulations(simulation_list, titles, filename, ax_lims = 50, pointsi
 
         
 if __name__ == "__main__":
+    simulate_flocking(d=2, 
+                      mode = "predator")
     # simulate in 2D
-    simulate_flocking(d = 2)
+    # simulate_flocking(d = 2)
     # simulate in 3D
     #simulate_flocking(d = 3)
     # store a simulation
