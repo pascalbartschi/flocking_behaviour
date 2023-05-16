@@ -320,19 +320,19 @@ def simulate_flocking(initialize_func = initialize_random,
     
         
 if __name__ == "__main__":
-    # simulate in 2D
+    #simulate in 2D
     simulate_flocking(d = 2, pred=True, food=True,param = {"n" : 100,
                                 "init_coord":(-1, 1),
-                                "ax_lim": (-100, 100),
-                                "steps": 300,
-                                "center_pull": 1,"predator_pull": 1.0,"predator_push": -1.5, "food_pull": -4})
-    # # simulate in 3D
-    # simulate_flocking(d = 3,pred=True,param = {"n" : 100,
-    #                            "init_coord":(-1, 1),
-    #                            "ax_lim": (-100, 100),
-    #                            "steps": 100,
-    #                            "center_pull": 1,"predator_pull": 1.5,"predator_push": -1})
-    # # store a simulation
+                                "ax_lim": (-500, 500),
+                                "steps": 100,
+                                "center_pull": 1,"predator_pull": 1.5,"predator_push": -1.0, "food_pull": -1})
+    # simulate in 3D
+    simulate_flocking(d = 3,pred=True, food=True,param = {"n" : 100,
+                                "init_coord":(-1, 1),
+                                "ax_lim": (-400, 400),
+                                "steps": 100,
+                                "center_pull": 1,"predator_pull": 1.5,"predator_push": -1.0, 'food_pull': -1})
+    # # # store a simulation
     # pos = simulate_flocking(d = 2, inline_plotting = False)
 
 
