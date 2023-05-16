@@ -47,7 +47,7 @@ def initialize_random(param, pred=False, food=False):
         double_agent_now = np.random.uniform(low=low-10,high=high-10, size=(1,d))  #start predator off in lower corner
         double_agent_old = np.random.uniform(low=low-10,high=high-10, size=(1,d))  #start predator off in lower corner
     if food: 
-        food_coord = np.random.uniform(ax_low/4, ax_high/4, size=(1,d))
+        food_coord = np.random.uniform(ax_low, ax_high, size=(1,d))
     if d == 2: 
         # some fig to plot
         fig = plt.figure()
@@ -185,17 +185,25 @@ def update(agent_now, agent_old, param, double_agent_now='not here', double_agen
         if (type(food_coord) == str) and (type(double_agent_now) == str):
             agent_temp[:, j] = 2 * agent_now[:, j] - agent_old[:, j] + \
             center_pull * (C[j] - agent_now[:, j]) / euclidian_dist((C - agent_now))
+            print('test')
         if (type(food_coord) == str) and (type(double_agent_now) != str):
             agent_temp[:,j] = 2 * agent_now[:, j] - agent_old[:, j] + \
             center_pull * (C[j] - agent_now[:, j]) / euclidian_dist((C - agent_now)) +\
             predator_push * (predator_position[:,j]-agent_now[:,j]) / euclidian_dist((double_agent_old-agent_now))**3
             double_agent_temp[0,j] = 2 * double_agent_now[0,j] - double_agent_old[0,j] + \
-            predator_pull * (C[j] - double_agent_now[0,j]) / euclidian_dist((C - double_agent_now))    #note that C is calculated from last iteration, showing reaction time of predator also not 0
+            predator_pull * (C[j] - double_agent_now[0,j]) / euclidian_dist((C - double_agent_now)) #note that C is calculated from last iteration, showing reaction time of predator also not 0
         if (type(double_agent_now) == str and type(food_coord) != str):
             agent_temp[:,j] = 2 * agent_now[:, j] - agent_old[:, j] + \
             center_pull * (C[j] - agent_now[:, j]) / euclidian_dist((C - agent_now)) +\
             food_pull * (C[j] - food_coord[0,j]) / euclidian_dist((C - food_coord)) 
-            
+            print('here')
+        if (type(double_agent_now) != str and type(food_coord) != str):
+            agent_temp[:,j] = 2 * agent_now[:, j] - agent_old[:, j] + \
+            center_pull * (C[j] - agent_now[:, j]) / euclidian_dist((C - agent_now)) +\
+            predator_push * (predator_position[:,j]-agent_now[:,j]) / euclidian_dist((double_agent_old-agent_now))**3+\
+            food_pull * (C[j] - food_coord[0,j]) / euclidian_dist((C - food_coord))
+            double_agent_temp[0,j] = 2 * double_agent_now[0,j] - double_agent_old[0,j] + \
+            predator_pull * (C[j] - double_agent_now[0,j]) / euclidian_dist((C - double_agent_now))
     if (type(double_agent_now) != str):
         return agent_temp, double_agent_temp
     return agent_temp
@@ -209,7 +217,7 @@ def simulate_flocking(initialize_func = initialize_random,
                                "init_coord":(-1, 1),
                                "ax_lim": (-50, 50),
                                "steps": 100,
-                               "center_pull": 1.5,"predator_pull": 1.5,"predator_push": -0.5, "food_pull": 1.5}, pred=False, food=False):
+                               "center_pull": 1.5,"predator_pull": 1.5,"predator_push": -0.5, "food_pull": -0.1}, pred=False, food=False):
     '''
 
     Parameters
@@ -238,9 +246,9 @@ def simulate_flocking(initialize_func = initialize_random,
 
     if pred and food:
         agent_old, agent_now, fig, ax, double_agent_now, double_agent_old, food_coord= initialize_func(param, pred=True, food=True)
-    if pred:
+    elif pred:
         agent_old, agent_now, fig, ax, double_agent_now, double_agent_old= initialize_func(param, pred=True)
-    if food:
+    elif food:
         agent_old, agent_now, fig, ax, food_coord= initialize_func(param, food=True)
     else:
         agent_old, agent_now, fig, ax = initialize_func(param)
@@ -257,21 +265,21 @@ def simulate_flocking(initialize_func = initialize_random,
         # simulate
         for i in range(steps):
             if pred and food:
-                agent_temp, double_agent_temp = update_func(agent_now,agent_old,param,double_agent_now,double_agent_old)
+                agent_temp, double_agent_temp = update_func(agent_now,agent_old,param,double_agent_now,double_agent_old, food_coord)
                 double_agent_old = double_agent_now.copy()
                 double_agent_now = double_agent_temp.copy()
                 agent_old = agent_now.copy()
                 agent_now = agent_temp.copy()
                 inline_plotting_func(agent_now, ax, param, double_agent_now, food_coord)
-            if pred:
+            elif pred:
                 agent_temp, double_agent_temp = update_func(agent_now,agent_old,param,double_agent_now,double_agent_old)
                 double_agent_old = double_agent_now.copy()
                 double_agent_now = double_agent_temp.copy()
                 agent_old = agent_now.copy()
                 agent_now = agent_temp.copy()
                 inline_plotting_func(agent_now, ax, param, double_agent_now)
-            if food:
-                agent_temp = update_func(agent_now, agent_old, param)
+            elif food:
+                agent_temp = update_func(agent_now, agent_old, param, food_coord=food_coord)
                 agent_old = agent_now.copy()
                 agent_now = agent_temp.copy()
                 # store updated and this position for next acceleration
@@ -309,16 +317,15 @@ def simulate_flocking(initialize_func = initialize_random,
         return positions
             
     
-        
-
+    
         
 if __name__ == "__main__":
     # simulate in 2D
-    simulate_flocking(d = 2, pred=False, food=True,param = {"n" : 100,
+    simulate_flocking(d = 2, pred=True, food=True,param = {"n" : 100,
                                 "init_coord":(-1, 1),
                                 "ax_lim": (-100, 100),
                                 "steps": 300,
-                                "center_pull": 1,"predator_pull": 1.0,"predator_push": -1.5, "food_pull": 5})
+                                "center_pull": 1,"predator_pull": 1.0,"predator_push": -1.5, "food_pull": -4})
     # # simulate in 3D
     # simulate_flocking(d = 3,pred=True,param = {"n" : 100,
     #                            "init_coord":(-1, 1),
