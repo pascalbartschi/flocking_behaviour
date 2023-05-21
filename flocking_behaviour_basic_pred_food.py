@@ -195,13 +195,12 @@ def update(agent_now, agent_old, param, double_agent_now='not here', double_agen
         if (type(double_agent_now) == str and type(food_coord) != str):
             agent_temp[:,j] = 2 * agent_now[:, j] - agent_old[:, j] + \
             center_pull * (C[j] - agent_now[:, j]) / euclidian_dist((C - agent_now)) +\
-            food_pull * (C[j] - food_coord[0,j]) / euclidian_dist((C - food_coord)) 
-            food_pull * abs((((C[j])-(food_coord[0,j]))/abs(euclidian_dist((C - food_coord))))**(13))
+            (-food_pull) * abs((((C[j])-(food_coord[0,j]))/abs(euclidian_dist((C - food_coord))))**(13))
         if (type(double_agent_now) != str and type(food_coord) != str):
             agent_temp[:,j] = 2 * agent_now[:, j] - agent_old[:, j] + \
             center_pull * (C[j] - agent_now[:, j]) / euclidian_dist((C - agent_now)) +\
             predator_push * (predator_position[:,j]-agent_now[:,j]) / euclidian_dist((double_agent_old-agent_now))**3+\
-            food_pull * (C[j] - food_coord[0,j]) / euclidian_dist((C - food_coord))
+            (-food_pull) * (C[j] - food_coord[0,j]) / euclidian_dist((C - food_coord))
             double_agent_temp[0,j] = 2 * double_agent_now[0,j] - double_agent_old[0,j] + \
             predator_pull * (C[j] - double_agent_now[0,j]) / euclidian_dist((C - double_agent_now))
     if (type(double_agent_now) != str):
@@ -326,7 +325,7 @@ if __name__ == "__main__":
 
                                 "ax_lim": (-100, 100),
                                 "steps": 300,
-                                "center_pull": 1,"predator_pull": 1.0,"predator_push": -1.5, "food_pull": -4})
+                                "center_pull": 1,"predator_pull": 1.0,"predator_push": -1.5, "food_pull": 4})
     # # simulate in 3D
     # simulate_flocking(d = 3,pred=True,param = {"n" : 100,
     #                            "init_coord":(-1, 1),
